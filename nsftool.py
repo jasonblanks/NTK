@@ -17,7 +17,7 @@ import os, win32com.client
 #change to meet your needs
 NSFPATH = "C:\\Users\\blanks\\Desktop\\TestNSF"
 IDPATH = "C:\\Users\\blanks\\Desktop\\TestNSF\\IDFiles"
-LOTUSDATAPATH = "C:\\Users\\blanksj\\AppData\\Local\\IBM\\Notes\\Data"
+LOTUSDATAPATH = "C:\\Users\\blanks\\AppData\\Local\\IBM\\Notes\\Data"
 
 #shouldn't need to change
 LOADFILE = "load.csv"
