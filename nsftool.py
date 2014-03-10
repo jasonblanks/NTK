@@ -1,26 +1,29 @@
-#	NSF Validation Tool v .1
-#	
-#	This is the first attempt at using python to interact with com
-#	and run various Lotus com functions and too validate deliveries.
-#	
-#	This is tested using IBM Notes 9 standalone client
-#	This script temparly moves the user's default user.id file to user.id_temp
-#	and runs through the load.csv file copying the id and nsf files as needed
-#	from the base directory.
-#	
-#	Requiremnts:
-#	IBM Notes 9 standalone client
-#	Python 2.7
-#
+'''	NSF Validation Tool v .1
+	
+	This is the first attempt at using python to interact with com
+	and run various Lotus com functions and too validate deliveries.
+	
+	This is tested using IBM Notes 9 standalone client
+	This script temparly moves the user's default user.id file to user.id_temp
+	and runs through the load.csv file copying the id and nsf files as needed
+	from the base directory.
+	
+	Requirements:
+	IBM Notes 9 standalone client
+	Python 2.7
+   win32com (http://sourceforge.net/projects/pywin32/files/pywin32/Build%20218/pywin32-218.win32-py2.7.exe/download))
+'''
 import sys, os, win32com.client, shutil, getopt
 
 
-#change to meet your needs
-NSFPATH = "C:\\Users\\blanks\\Desktop\\TestNSF"
-IDPATH = "C:\\Users\\blanks\\Desktop\\TestNSF\\IDFiles"
-LotusDataPATH = "C:\\Users\\blanks\\AppData\\Local\\IBM\\Notes\\Data"
+#Environment Variables
+##TODO: Fix so it accepts spaces in file path.
+NSFPATH = "C:\\Users\\KFVM\\Documents\\GitHub\\NSFTool\\nsf_data"
+IDPATH = "C:\\Users\\KFVM\\Documents\\GitHub\\NSFTool\\nsf_data"
+##TODO:Should be able to look this path automatically.
+LotusDataPATH = "C:\\Users\\KFVM\\AppData\\Local\\Lotus\\Notes\\Data"
 
-#shouldn't change
+##TODO: Add command line arg to specify this file path.
 LOADFILE = "load.csv"
 IDDefault = "user.id"
 IDTemp = os.path.join(LotusDataPATH,"user.id_temp")
@@ -34,6 +37,9 @@ def TempFileCheck():
 
 
 def NSFDecrypt(db, task, NSFPATH, logfile):
+	##TODO: Rename the original NSF file by appending "-delete" to it. This will allow
+	##user to easily identify the original files to delete before processing.
+	#TODO: Split on "."
 	dbclone = db.CreateFromTemplate("",os.path.join(NSFPATH, task[0])+"--decrypt", False)
 	dbclone.Compact
 	
@@ -66,12 +72,15 @@ def BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH):
 				os.remove(os.path.join(LotusDataPATH,"user.id"))
 				
 def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce):
+	#TODO: Add os check to see if LOADFILE exists. If not throw error and exit.
 	TASKS = [line.strip().split(',') for line in open(LOADFILE)]
 	TempFileCheck()
 	logfile = open('log.txt','w')
 	logfile.write("NSF File\tID File\tPASSWORD\tMSG Count\tSTATUS\n")
 
 	for task in TASKS:
+		#TODO: Add os check to see if IDPATH and LotusDataPATH exists. If not throw error and exit.
+		#TODO: Further test Steve Gibsons method of switching Id files.
 		shutil.copyfile(os.path.join(IDPATH,task[1]),os.path.join(LotusDataPATH,"user.id"))
 		session = win32com.client.Dispatch("Lotus.NotesSession")
 		
@@ -114,6 +123,7 @@ def main(argv):
 			#Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce)
 		elif opt == "-d":
 			decrypt = True
+			print LOADFILE
 			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce)
 		elif opt ==  "-c":
 			bruteForce = True
