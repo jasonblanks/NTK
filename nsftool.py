@@ -41,7 +41,10 @@ def NSFDecrypt(db, task, NSFPATH, logfile):
 	##user to easily identify the original files to delete before processing.
 	#TODO: Split on "."
 	dbclone = db.CreateFromTemplate("",os.path.join(NSFPATH, task[0])+"--decrypt", False)
-	dbclone.Compact
+	#dbclone.Compact
+	dbclone.CompactWithOptions("L")
+	dbclone.GrantAccess( "-Default-", "6" )
+	dbclone.GrantAccess( "Anonymous", "6" )
 	
 	OriginalDocCount = db.AllDocuments
 	CloneDocCount = dbclone.AllDocuments
