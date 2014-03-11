@@ -11,7 +11,12 @@
 	Requirements:
 	IBM Notes 9 standalone client
 	Python 2.7
-   win32com (http://sourceforge.net/projects/pywin32/files/pywin32/Build%20218/pywin32-218.win32-py2.7.exe/download))
+   	win32com (http://sourceforge.net/projects/pywin32/files/pywin32/Build%20218/pywin32-218.win32-py2.7.exe/download))
+
+
+	MAJOR TODO: Better error reporting and handling.
+
+
 '''
 import sys, os, win32com.client, shutil, getopt
 
@@ -36,15 +41,20 @@ def TempFileCheck():
 		os.rename(os.path.join(LotusDataPATH,IDDefault),IDTemp)
 
 
-def NSFDecrypt(db, task, NSFPATH, logfile):
-	##TODO: Rename the original NSF file by appending "-delete" to it. This will allow
-	##user to easily identify the original files to delete before processing.
-	#TODO: Split on "."
-	dbclone = db.CreateFromTemplate("",os.path.join(NSFPATH, task[0])+"--decrypt", False)
+def NSFDecrypt(db, task, NSFPATH, logfile, DELETE):
+	cloneFilename = task[0].split('.')
+	dbclone = db.CreateFromTemplate("",os.path.join(NSFPATH, cloneFilename[0])+"--decrypt.nsf", False)
 	#dbclone.Compact
+	
+	# We determianed you not only have to remove encryption by compact but clear out the ACL on that NSF
+	# Below is a quick hack to allow everyone access, I would like to make this cleaner my creating a function
+	# to clear out the whole ACL.
 	dbclone.CompactWithOptions("L")
 	dbclone.GrantAccess( "-Default-", "6" )
 	dbclone.GrantAccess( "Anonymous", "6" )
+	
+	if DELETE:
+		os.remove(os.path.join(NSFPATH, task[0])
 	
 	OriginalDocCount = db.AllDocuments
 	CloneDocCount = dbclone.AllDocuments
@@ -55,7 +65,7 @@ def NSFDecrypt(db, task, NSFPATH, logfile):
 	elif  CloneDocCount.Count != OriginalDocCount.Count:
 		logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(CloneDocCount.Count)+"\tGOOD, but decypt did not match\tNO\n")
 
-def BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH):
+def BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH, DELETE):
 	for BadNSF in bad:
 		for ID in TASKS:
 			for PASSWORD in TASKS:
@@ -74,7 +84,7 @@ def BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH):
 				#NSFDecrypt(database, task, NSFPATH, logfile)
 				os.remove(os.path.join(LotusDataPATH,"user.id"))
 				
-def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce):
+def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce, DELETE):
 	#TODO: Add os check to see if LOADFILE exists. If not throw error and exit.
 	TASKS = [line.strip().split(',') for line in open(LOADFILE)]
 	TempFileCheck()
@@ -99,16 +109,17 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, d
 				
 		logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tGOOD\n")
 		if decrypt == 1:
-			NSFDecrypt(database, task, NSFPATH, logfile)
+			NSFDecrypt(database, task, NSFPATH, logfile, DELETE)
 		os.remove(os.path.join(LotusDataPATH,"user.id"))
 	if bruteForce == 1:
-		BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH)
+		BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH, DELETE)
 
 	TempFileCheck()
 
 def main(argv):
 	decrypt = 0
 	bruteForce = 0
+	DELETE = 0
 	try:
 		opts, args = getopt.getopt(argv,"hdc",)
 		print opts
@@ -116,9 +127,8 @@ def main(argv):
 	except getopt.GetoptError:
 		print 'test.py -h -c -d '
 		sys.exit(2)
-
+	#TODO: add arg to delete old file after decrypt.
 	for opt, arg in opts:
-		#print "here"
 		if opt == '-h':
 			print 'test.py -d(decrypt valid files) -c(brute force with all given id and password combinations.)'
 			sys.exit()
@@ -127,15 +137,15 @@ def main(argv):
 		elif opt == "-d":
 			decrypt = True
 			print LOADFILE
-			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce)
+			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce, DELETE)
 		elif opt ==  "-c":
 			bruteForce = True
-			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce)
+			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce, DELETE)
 		else:
-			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce)
+			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce, DELETE)
 	if not opts:
-		Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce)
-		print "here"
+		Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, bad, decrypt, bruteForce, DELETE)
+
 
 
 
