@@ -17,7 +17,7 @@
 
 
 '''
-import sys, os, win32com.client, shutil, getopt, subprocess, fileinput
+import sys, os, win32com.client, shutil, getopt, subprocess, fileinput, pyodbc
 #import pywintypes
 import pythoncom
 import multiprocessing
@@ -25,108 +25,18 @@ import time
 
 #Environment Variables
 ##TODO: Fix so it accepts spaces in file path.
-NSFPATH = r'C:\\Users\blanksj\Desktop\test'
-IDPATH = r'C:\\Users\blanksj\Desktop\test'
+NSFPATH = r'C:\Users\user_profile\Desktop\test'
+IDPATH = r'C:\Users\user_profile\Desktop\test'
 ##TODO:Should be able to look this path automatically.
-LotusDataPATH = r'C:\\Users\blanksj\AppData\Local\IBM\Notes\Data'
-inifile = r'C:\\Users\blanksj\AppData\Local\IBM\Notes\Data\notes.ini'
-
+LotusDataPATH = r'C:\Users\user_profile\AppData\Local\IBM\Notes\Data'
+inifile = r'C:\Users\user_profile\AppData\Local\IBM\Notes\Data\notes.ini'
 
 ##TODO: Add command line arg to specify this file path.
-LOADFILE = r'C:\\Users\blanksj\Desktop\test\load.txt'
-DummyFile = r'C:\\Users\blanksj\Desktop\test\dummy.id'
-IDDefault = "user.id"
-IDTemp = os.path.join(LotusDataPATH,"user.id_temp")
-bad = []
-global BAD
-global GOOD
+LOADFILE = r'C:\Users\user_profile\Desktop\test\test\load.txt'
+DummyFile = r'C:\Users\user_profile\Desktop\test\dummy.id'
+NotesSQLCFG = r'C:\NotesSQL\notessql.cfg'
 BAD = []
 GOOD = []
-timeout = 10
-
-def test(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decrypt, bruteForce, DELETE, inifile, task, count, GOOD, BAD):
-	password = None
-	for line in fileinput.FileInput(inifile, inplace=1):
-		if line.startswith(r'KeyFilename='):
-			defaultID = line
-			line = line.replace(line, r'KeyFilename='+DummyFile)
-		if line.startswith("KeyFileName_Owner"):
-			defaultOwner = line
-			line = line.replace(line, r'')
-		if line.startswith("Location="):
-			defaultOwner = line
-			line = line.replace(line, "")
-		print line.strip()
-	try:
-		session = win32com.client.Dispatch("Lotus.NotesSession")
-		session.Initialize()
-	except Exception as inst:
-			print type(inst)
-			print inst.args
-			if type(inst) == AttributeError:
-				print inst.args
-				#x, y ,u , i = insta.args
-				#logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
-				#logfile.write(task[0]+"\t"+task[1]+"\t"+"\tNA\t"+u[2]+"\n")
-				#logfile.close()
-	if task[2]:
-		try:
-			reg = session.createRegistration()
-			reg.switchToID(os.path.join(IDPATH,task[1]),task[2])
-		except Exception as inst:
-				print type(inst)
-				print inst.args
-				if type(inst) == AttributeError:
-					#x, y ,u , i = inst.arg
-					print inst.arg
-					#logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
-					#logfile.write(task[0]+"\t"+task[1]+"\t"+"\tNA\t"+u[2]+"\n")
-					#logfile.close()
-					#task_tuple = (task[0],task[1],task[2])
-					#BAD.append(task)
-
-	elif not task[2]:
-		password = None
-		try:
-			session.Initialize()
-		except Exception as inst:
-				if type(inst) == TypeError:
-					x, y ,u , i = inst.args
-					#logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
-					#logfile.write(task[0]+"\t"+task[1]+"\t"+"\tNA\t"+u[2]+"\n")
-					#logfile.close()
-
-
-def test2(NSFPATH, IDPATH, LotusDataPATH, IDDefault, IDTemp, inifile, BadNSF, PASSWORD, ID):
-	password = None
-	for line in fileinput.FileInput(inifile, inplace=1):
-		if line.startswith(r'KeyFilename='):
-			defaultID = line
-			line = line.replace(line, r'KeyFilename='+DummyFile)
-		if line.startswith("KeyFileName_Owner"):
-			defaultOwner = line
-			line = line.replace(line, r'')
-		if line.startswith("Location="):
-			defaultOwner = line
-			line = line.replace(line, "")
-		print line.strip()
-	try:
-		session = win32com.client.Dispatch("Lotus.NotesSession")
-		session.Initialize()
-	except Exception as inst:
-			print type(inst)
-			print inst.args
-			if type(inst) == AttributeError:
-				print inst.args
-	if PASSWORD:
-		try:
-			reg = session.createRegistration()
-			reg.switchToID(os.path.join(IDPATH,ID),PASSWORD)
-		except Exception as inst:
-				print type(inst)
-				print inst.args
-				if type(inst) == AttributeError:
-					print inst.arg
 
 def NSFDecrypt(db, task, NSFPATH, logfile, DELETE):
 		cloneFilename = task[0].split('.')
@@ -147,84 +57,81 @@ def NSFDecrypt(db, task, NSFPATH, logfile, DELETE):
 		CloneDocCount = dbclone.AllDocuments
 
 		if  CloneDocCount.Count == OriginalDocCount.Count:
-			logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
+			logfile = open("C:\\Users\\user_profile\\Desktop\\test\\log.txt","a")
 			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(CloneDocCount.Count)+"\tDecrypted\n")
 			logfile.close()
 
 		elif  CloneDocCount.Count != OriginalDocCount.Count:
-			logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
+			logfile = open("C:\\Users\\user_profile\\Desktop\\test\\log.txt","a")
 			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(CloneDocCount.Count)+"\tDecryption Failed\n")
 			logfile.close()
-
-
-def BruteForce(BAD, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH, DELETE):
-
-	#TODO: Add os check to see if LOADFILE exists. If not throw error and exit.
-	TASKS = [line.strip().split(',') for line in open(LOADFILE)]
-	logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
-	logfile.write("NSF File\tID File\tPASSWORD\tMSG Count\tSTATUS\n")
-	logfile.close()
-
-	count = 0
-
-	for BadNSF in BAD:
-		for line in fileinput.FileInput(inifile, inplace=1):
-			if line.startswith(r'KeyFilename='):
-				defaultID = line
-				line = line.replace(line, r'KeyFilename='+DummyFile)
-			if line.startswith("KeyFileName_Owner"):
-				defaultOwner = line
-				line = line.replace(line, r'')
-			if line.startswith("Location="):
-				defaultOwner = line
-				line = line.replace(line, "")
-			print line.strip()
-
-		try:
-			session = win32com.client.Dispatch("Lotus.NotesSession")
-			session.Initialize()
-		except Exception as inst:
-				print type(inst)
-				print inst.args
-				if type(inst) == AttributeError:
-					print inst.args
-
-
+def BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH, DELETE):
+	for BadNSF in bad:
 		for ID in TASKS:
 			for PASSWORD in TASKS:
-				p = multiprocessing.Process(target=test2, name="test2", args=(NSFPATH, IDPATH, LotusDataPATH, IDDefault, IDTemp, inifile, BadNSF[0], PASSWORD[2], ID[1]))
-				count = count + 1
-				p.start()
-				p.join(timeout)
-				if p.is_alive():
-					p.terminate()
-					#BAD.append(task)
-					logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
-					logfile.write(BadNSF[0]+"\t"+ID[1]+"\t"+PASSWORD[2]+"\tNA\tTIMEOUT\n")
-					logfile.close()
-					p.join()
-				else:
-					#print "good "+str(task)
-					logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
-					logfile.write(BadNSF[0]+"\t"+ID[1]+"\t"+PASSWORD[2]+"\tNA\tGOOD\n")
-					logfile.close()
-					break
+				shutil.copyfile(os.path.join(IDPATH,ID[1]),os.path.join(LotusDataPATH,"user.id"))
+				session[count-1] = win32com.client.Dispatch("Lotus.NotesSession[count-1]")
 
-					#GOOD.append((BadNSF[0],ID[1],PASSWORD[2]))
+				try:
+					session[count-1].Initialize(PASSWORD[2])
+					database = session[count-1].GetDatabase("", os.path.join(NSFPATH, BadNSF[0]))
+					docs = database.AllDocuments
+				except:
+					logfile.write(BadNSF[0]+"\t"+ID[1]+"\t"+PASSWORD[2]+"\tNA\tERROR: BF Attempt Bad\n")
+					os.remove(os.path.join(LotusDataPATH,"user.id"))
+					continue
+				logfile.write(str(BadNSF[0])+"\t"+str(ID[1])+"\t"+str(PASSWORD[2])+"\t"+str(docs.Count)+"\tGOOD\tBRUTEFORCE\n")
+				#NSFDecrypt(database, task, NSFPATH, logfile)
+				os.remove(os.path.join(LotusDataPATH,"user.id"))
 
-
-
-
-
-def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, timeout):
+def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG):
 	#TODO: Add os check to see if LOADFILE exists. If not throw error and exit.
 	TASKS = [line.strip().split(',') for line in open(LOADFILE)]
-	logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","w")
+	logfile = open("C:\\Users\\user_profile\\Desktop\\test\\log.txt","w")
 	logfile.write("NSF File\tID File\tPASSWORD\tMSG Count\tSTATUS\n")
 	logfile.close()
 
-	count = 0
+	for line in fileinput.FileInput(inifile, inplace=1):
+		if line.startswith(r'KeyFilename='):
+			defaultID = line
+			line = line.replace(line, r'KeyFilename='+DummyFile)
+		if line.startswith("KeyFileName_Owner"):
+			defaultOwner = line
+			line = line.replace(line, r'')
+		if line.startswith("Location="):
+			defaultOwner = line
+			line = line.replace(line, "")
+		print line.strip()
 
+	try:
+		session = win32com.client.Dispatch("Lotus.NotesSession")
+		session.Initialize()
+	except Exception as inst:
+			print type(inst)
+			print inst.args
+			if type(inst) == AttributeError:
+				print inst.args
+
+
+	def buildfile(TASKS, NotesSQLCFG):
+		CFGFile = open(NotesSQLCFG,"w")
+		CFGFile.write("[Users]\n")
+		CFGFile.close()
+		for root, dirs, files in os.walk(r'C:\Users\user_profile\Desktop\test\test'):
+			for dir in dirs:
+				count = 0
+				for custodian in TASKS:
+					#print custodian[0]+" "+str(dir)
+					if custodian[0] == dir:
+						#for file in files:
+							#if file.endswith(".nsf"):
+								#NSFFiles.append(os.path.join(root,file))
+						CFGFile = open(NotesSQLCFG,"a")
+						CFGFile.write(custodian[0]+"/"+str(count)+"="+custodian[1]+"\n")
+						CFGFile.close()
+						count = count + 1
+
+	'''
 	for task in TASKS:
 		for line in fileinput.FileInput(inifile, inplace=1):
 			if line.startswith(r'KeyFilename='):
@@ -237,40 +144,25 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decryp
 				defaultOwner = line
 				line = line.replace(line, "")
 			print line.strip()
+	'''
+	buildfile(TASKS, NotesSQLCFG)
 
-		try:
-			session = win32com.client.Dispatch("Lotus.NotesSession")
-			session.Initialize()
-		except Exception as inst:
-				print type(inst)
-				print inst.args
-				if type(inst) == AttributeError:
-					print inst.args
-					#x, y ,u , i =
-					#logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
-					#logfile.write(task[0]+"\t"+task[1]+"\t"+"\tNA\t"+u[2]+"\n")
-					#logfile.close()
-
-
-
-
-		#os.system('taskkill /f /im SUService.exe')
-		#os.system('taskkill /f /im ntmulti.exe')
-		#os.system('taskkill /f /im nsd.exe')
-		p = multiprocessing.Process(target=test, name="test", args=(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decrypt, bruteForce, DELETE, inifile, task, count, GOOD, BAD))
-		count = count + 1
-		p.start()
-		p.join(timeout)
-		if p.is_alive():
-			p.terminate()
-			BAD.append(task)
-			logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
-			logfile.write(task[0]+"\t"+task[1]+"\t"+"\tNA\tTIMEOUT\n")
-			logfile.close()
-			p.join()
-		else:
-			#print "good "+str(task)
-			GOOD.append(task)
+	for root, dirs, files in os.walk(r'C:\Users\user_profile\Desktop\test\test', topdown=False):
+		for custodian in TASKS:
+			count = 0
+			for file in files:
+				if custodian[0] in root.split('\\'):
+					if file.endswith('nsf'):
+						try:
+							print "---"
+							print "Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+file+""
+							connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+file+"", autocommit=True)
+							if connection:
+								print "run 1 works"
+								GOOD.append((file, custodian[1], custodian[2]))
+						except Exception as inst:
+										#print type(inst)
+										print inst.args
 
 	print GOOD
 	for line in fileinput.FileInput(inifile, inplace=1):
@@ -294,7 +186,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decryp
 			if type(inst) == AttributeError:
 				print inst.args
 				#x, y ,u , i = insta.args
-				#logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
+				#logfile = open("C:\\Users\\user_profile\\Desktop\\test\\log.txt","a")
 				#logfile.write(task[0]+"\t"+task[1]+"\t"+"\tNA\t"+u[2]+"\n")
 				#logfile.close()
 
@@ -309,7 +201,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decryp
 				if type(inst) == AttributeError:
 					#x, y ,u , i = inst.arg
 					print inst.arg
-					#logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
+					#logfile = open("C:\\Users\\user_profile\\Desktop\\test\\log.txt","a")
 					#logfile.write(task[0]+"\t"+task[1]+"\t"+"\tNA\t"+u[2]+"\n")
 					#logfile.close()
 					#task_tuple = (task[0],task[1],task[2])
@@ -318,7 +210,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decryp
 		try:
 			database = session.GetDatabase("", os.path.join(NSFPATH, task[0]))
 			docs = database.AllDocuments
-			logfile = open("C:\\Users\\blanksj\\Desktop\\test\\log.txt","a")
+			logfile = open("C:\\Users\\user_profile\\Desktop\\test\\log.txt","a")
 			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tGOOD\n")
 			logfile.close()
 			if decrypt == 1:
@@ -329,10 +221,31 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decryp
 					x, y ,u , i = inst.args
 					print u
 
+	for line in fileinput.FileInput(inifile, inplace=1):
+		if line.startswith(r'KeyFilename='):
+			defaultID = line
+			line = line.replace(line, r'KeyFilename='+DummyFile)
+		if line.startswith("KeyFileName_Owner"):
+			defaultOwner = line
+			line = line.replace(line, r'')
+		if line.startswith("Location="):
+			defaultOwner = line
+			line = line.replace(line, "")
+		print line.strip()
+
+	try:
+		session = win32com.client.Dispatch("Lotus.NotesSession")
+		session.Initialize()
+	except Exception as inst:
+			print type(inst)
+			print inst.args
+			if type(inst) == AttributeError:
+				print inst.args
+
 	#if decrypt == 1:
 		#NSFDecrypt(database, task, NSFPATH, logfile, inifile,  DELETE, GOOD)
-	if bruteForce == 1:
-		BruteForce(BAD, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH, DELETE)
+	#if bruteForce == 1:
+			#BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH, DELETE, BAD)
 
 
 def main(argv, GOOD, BAD):
@@ -356,11 +269,11 @@ def main(argv, GOOD, BAD):
 			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, timeout)
 		elif opt ==  "-c":
 			bruteForce = True
-			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, timeout)
+			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decrypt, bruteForce, DELETE)
 		else:
 			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decrypt, bruteForce, DELETE, BAD, GOOD)
 	if not opts:
-		Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, timeout)
+		Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG)
 
 
 
