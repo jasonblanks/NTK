@@ -1,4 +1,4 @@
-'''	NSF Validation Tool v .9
+'''	NSF Validation Tool v .8.1
 	This is the first attempt at using python to interact with com
 	and run various Lotus com functions and too validate deliveries.
 
@@ -28,12 +28,12 @@ import time
 NSFPATH = r'Y:\NSF'
 IDPATH = r'Y:\NSF\IDs'
 ##TODO:Should be able to look this path automatically.
-LotusDataPATH = r'C:\Users\blanksj\AppData\Local\IBM\Notes\Data'
-inifile = r'C:\Users\blanksj\AppData\Local\IBM\Notes\Data\notes.ini'
+LotusDataPATH = r'C:\Users\user\AppData\Local\IBM\Notes\Data'
+inifile = r'C:\Users\user\AppData\Local\IBM\Notes\Data\notes.ini'
 logpath = r'Y:\NSF'
 ##TODO: Add command line arg to specify this file path.
 LOADFILE = r'Y:\NSF\load.txt'
-DummyFile = r'C:\Users\blanksj\Desktop\test\dummy.id'
+DummyFile = r'C:\Users\user\Desktop\test\dummy.id'
 NotesSQLCFG = r'C:\NotesSQL\notessql.cfg'
 workingDir = r'Y:\NSF'
 BAD = []
@@ -141,6 +141,8 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 	for root, dirs, files in os.walk(workingDir, topdown=False):
 		for custodian in TASKS:
 			count = 0
+
+			#print files
 			for file in files:
 				if custodian[0] in root.split('\\'):
 					if file.endswith('nsf'):
@@ -150,7 +152,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 							#print os.getcwd()
 							#print os.path.join(IDPATH,custodian[1]) +"--"+custodian[1]
 							##shutil.copy2(os.path.join(IDPATH,custodian[1]),".")
-							#print "Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+""
+							print "Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+""
 							connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+"", autocommit=True)
 							#connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+file+"", autocommit=True)
 							#os.remove(os.path.join(IDPATH,custodian[1]))
@@ -158,7 +160,8 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 								GOOD.append((os.path.join(root,file), custodian[1], custodian[2]))
 								#print GOOD
 						except Exception as inst:
-										#print inst.args
+										print inst.args
+										print os.path.join(root,file)
 										a,b = inst.args
 										if re.search('Wrong Password',b):
 											logfile = open(os.path.join(logpath,"log.txt"),"a")
@@ -167,7 +170,8 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 											#print str(custodian[0])+"\t "+str(custodian[2])+"\t "+str(custodian[1])+"\t\tbad password/ID Combination\n"
 										else:
 											logfile = open(os.path.join(logpath,"log.txt"),"a")
-											logfile.write(str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+b+"\n")
+											logfile.write(str(os.path.join(root,file))+"\t"+str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+b+"\n")
+											#str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tWorks\n"
 											logfile.close()
 	for task in GOOD:
 		#print "working on second stage"
@@ -179,7 +183,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 		except Exception as inst:
 				#print inst
 				logfile = open(os.path.join(logpath,"log.txt"),"a")
-				logfile.write(str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+inst.args+"\n")
+				logfile.write(str(os.path.join(root,file))+"\t"+str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+inst.args+"\n")
 				logfile.close()
 				#if type(inst) == AttributeError:
 					#x, y ,u , i = inst.arg
