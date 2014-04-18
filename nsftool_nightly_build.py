@@ -130,6 +130,8 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 				for custodian in TASKS:
 					if custodian[0] == dir:
 						CFGFile = open(NotesSQLCFG,"a")
+						#Test full path
+						#CFGFile.write(custodian[0]+"/"+str(count)+"="+os.path.join(IDPATH,custodian[1])+"\n")
 						CFGFile.write(custodian[0]+"/"+str(count)+"="+custodian[1]+"\n")
 						CFGFile.close()
 						count = count + 1
