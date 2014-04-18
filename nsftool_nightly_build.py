@@ -130,6 +130,8 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 				for custodian in TASKS:
 					if custodian[0] == dir:
 						CFGFile = open(NotesSQLCFG,"a")
+						#Test full path
+						#CFGFile.write(custodian[0]+"/"+str(count)+"="+os.path.join(IDPATH,custodian[1])+"\n")
 						CFGFile.write(custodian[0]+"/"+str(count)+"="+custodian[1]+"\n")
 						CFGFile.close()
 						count = count + 1
@@ -143,7 +145,10 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 					if file.endswith('nsf'):
 						try:
 							os.chdir(root)
+							#Test moving id file to cwd.
+							#os.copy(os.path.join(IDPATH,custodian[1]),".")
 							connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+"", autocommit=True)
+							#os.remove(os.path.join(IDPATH,custodian[1]))
 							if connection:
 								GOOD.append((file, custodian[1], custodian[2]))
 						except Exception as inst:
