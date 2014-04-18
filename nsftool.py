@@ -1,4 +1,4 @@
-'''	NSF Validation Tool v .8.1
+'''	NSF Validation Tool v .8.2
 	This is the first attempt at using python to interact with com
 	and run various Lotus com functions and too validate deliveries.
 
@@ -165,7 +165,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 										a,b = inst.args
 										if re.search('Wrong Password',b):
 											logfile = open(os.path.join(logpath,"log.txt"),"a")
-											logfile.write(str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t\tbad password/ID Combination\n")
+											logfile.write(str(os.path.join(root,file))+"\t"+str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t\tbad password/ID Combination\n")
 											logfile.close()
 											#print str(custodian[0])+"\t "+str(custodian[2])+"\t "+str(custodian[1])+"\t\tbad password/ID Combination\n"
 										else:
