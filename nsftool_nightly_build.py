@@ -44,6 +44,7 @@ def NSFDecrypt(db, task, NSFPATH, logfile, DELETE, logpath):
 		dbclone = db.CreateFromTemplate("",os.path.join(NSFPATH, cloneFilename[0])+"--decrypt.nsf", False)
 		#dbclone.Compact
 
+
 		# We determianed you not only have to remove encryption by compact but clear out the ACL on that NSF
 		# Below is a quick hack to allow everyone access, I would like to make this cleaner my creating a function
 		# to clear out the whole ACL.
