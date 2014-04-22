@@ -1,4 +1,4 @@
-'''	NSF Validation Tool v .8.3
+'''	NSF Validation Tool v .8.4
 	This is the first attempt at using python to interact with com
 	and run various Lotus com functions and too validate deliveries.
 
@@ -18,7 +18,7 @@
 
 
 '''
-import sys, os, win32com.client, shutil, getopt, subprocess, fileinput, pyodbc, re
+import sys, os, win32com.client, shutil, getopt, subprocess, fileinput, pyodbc, re, hashlib
 import pythoncom
 import multiprocessing
 import time
@@ -93,7 +93,7 @@ def BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH, DELETE, logp
 				os.remove(os.path.join(LotusDataPATH,"user.id"))
 
 
-def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile):
+def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile, filenameBlacklist, hashBlacklist):
 	#TODO: Add os check to see if LOADFILE exists. If not throw error and exit.
 	TASKS = [line.strip().split(',') for line in open(LOADFILE)]
 	logfile = open(os.path.join(logpath,"log.txt"),"w")
@@ -149,36 +149,58 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 			for file in files:
 				if custodian[0] in root.split('\\'):
 					if file.endswith('nsf'):
+						#print file
 						try:
 							os.chdir(root)
-							#Test moving id file to cwd.
-							#print os.getcwd()
-							#print os.path.join(IDPATH,custodian[1]) +"--"+custodian[1]
-							##shutil.copy2(os.path.join(IDPATH,custodian[1]),".")
-							#Custodian is (username, IDFile, Password)
-							print "Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+""
-							connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+"", autocommit=True)
-							#connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+file+"", autocommit=True)
-							#os.remove(os.path.join(IDPATH,custodian[1]))
-							if connection:
-								#edit
-								GOOD.append((root, file, custodian[0], custodian[1], custodian[2]))
-								#GOOD.append((os.path.join(root,file), custodian[1], custodian[2]))
-								#print GOOD
+							if file in filenameBlacklist:
+								print "skipped: "+file
+								break
+
+							with open(file) as file_to_check:
+								# read contents of the file
+								data = file_to_check.read()
+								# pipe contents of the file through
+								md5_returned = hashlib.md5(data).hexdigest()
+								print "md5: "+md5_returned
+
+							if md5_returned in hashBlacklist:
+								break
+							else:
+								#Test moving id file to cwd.
+								#print os.getcwd()
+								#print os.path.join(IDPATH,custodian[1]) +"--"+custodian[1]
+								##shutil.copy2(os.path.join(IDPATH,custodian[1]),".")
+								#Custodian is (username, IDFile, Password)
+								print "Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+""
+								connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+"", autocommit=True)
+								#connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+file+"", autocommit=True)
+								#os.remove(os.path.join(IDPATH,custodian[1]))
+								if connection:
+									#edit
+									GOOD.append((root, file, custodian[0], custodian[1], custodian[2]))
+									#GOOD.append((os.path.join(root,file), custodian[1], custodian[2]))
+									#print GOOD
+						except MemoryError:
+							print "fuck"
+							break
 						except Exception as inst:
-										#print inst.args
-										#print os.path.join(root,file)
-										a,b = inst.args
-										if re.search('Wrong Password',b):
-											logfile = open(os.path.join(logpath,"log.txt"),"a")
-											logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: bad password/ID Combination\n")
-											logfile.close()
-											#print str(custodian[0])+"\t "+str(custodian[2])+"\t "+str(custodian[1])+"\t\tbad password/ID Combination\n"
-										else:
-											logfile = open(os.path.join(logpath,"log.txt"),"a")
-											logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: "+b+"\n")
-											#str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tWorks\n"
-											logfile.close()
+							print Exception
+							#print len(inst)
+							print inst.args
+
+							#print os.path.join(root,file)
+							a, b = inst
+							if re.search('Wrong Password',b):
+								logfile = open(os.path.join(logpath,"log.txt"),"a")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: bad password/ID Combination\n")
+								logfile.close()
+								#print str(custodian[0])+"\t "+str(custodian[2])+"\t "+str(custodian[1])+"\t\tbad password/ID Combination\n"
+							else:
+								logfile = open(os.path.join(logpath,"log.txt"),"a")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: "+b+"\n")
+								#str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tWorks\n"
+								logfile.close()
+
 	for task in GOOD:
 		#task is (root, file, username, IDFile, Password)
 		#print "working on second stage"
@@ -304,6 +326,20 @@ def main(argv, GOOD, BAD, DummyFile, inifile):
 	decrypt = 0
 	bruteForce = 0
 	DELETE = 0
+	hashBlacklist = []
+	filenameBlacklist = []
+	fileblacklistIn=[line.strip() for line in open(os.path.join(workingDir, r'fblacklist.txt'))]
+	hashblacklistIn=[line.strip() for line in open(os.path.join(workingDir, r'hblacklist.txt'))]
+	
+	#load filename blacklist
+
+	for line in fileblacklistIn:
+		filenameBlacklist.append(line)
+
+	for line in hashblacklistIn:
+		hashBlacklist.append(line)
+
+	#load hash blacklist
 	for line in fileinput.FileInput(inifile, inplace=1):
 		if line.startswith("KeyFileName="):
 			defaultID = line
@@ -347,7 +383,7 @@ def main(argv, GOOD, BAD, DummyFile, inifile):
 		else:
 			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, IDDefault, IDTemp, decrypt, bruteForce, DELETE, BAD, GOOD, logpath, workingDir)
 	if not opts:
-		Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile)
+		Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile, filenameBlacklist, hashBlacklist)
 
 if __name__ == "__main__":
 	start_time = time.time()
