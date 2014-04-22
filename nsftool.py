@@ -1,4 +1,4 @@
-'''	NSF Validation Tool v .8.2
+'''	NSF Validation Tool v .8.3
 	This is the first attempt at using python to interact with com
 	and run various Lotus com functions and too validate deliveries.
 
@@ -22,7 +22,6 @@ import sys, os, win32com.client, shutil, getopt, subprocess, fileinput, pyodbc, 
 import pythoncom
 import multiprocessing
 import time
-
 #Environment Variables
 ##TODO: Fix so it accepts spaces in file path.
 NSFPATH = r'Y:\NSF'
@@ -30,18 +29,21 @@ IDPATH = r'Y:\NSF\IDs'
 ##TODO:Should be able to look this path automatically.
 LotusDataPATH = r'C:\Users\user\AppData\Local\IBM\Notes\Data'
 inifile = r'C:\Users\user\AppData\Local\IBM\Notes\Data\notes.ini'
-logpath = r'Y:\NSF'
+logpath = r'C:\temp\test'
+#logpath = r'Y:\NSF'
 ##TODO: Add command line arg to specify this file path.
 LOADFILE = r'Y:\NSF\load.txt'
 DummyFile = r'C:\Users\user\Desktop\test\dummy.id'
 NotesSQLCFG = r'C:\NotesSQL\notessql.cfg'
-workingDir = r'Y:\NSF'
+workingDir = r'C:\temp\test'
+#workingDir = r'Y:\NSF'
 BAD = []
 GOOD = []
 
 def NSFDecrypt(db, task, NSFPATH, logfile, DELETE, logpath):
-		cloneFilename = task[0].split('.')
-		dbclone = db.CreateFromTemplate("",os.path.join(NSFPATH, cloneFilename[0])+"--decrypt.nsf", False)
+		#TASKS is (root, file, username, IDFile, Password)
+		cloneFilename = task[1].split('.')
+		dbclone = db.CreateFromTemplate("",os.path.join(task[0], cloneFilename[0])+"--decrypt.nsf", False)
 		#dbclone.Compact
 
 		
@@ -53,39 +55,40 @@ def NSFDecrypt(db, task, NSFPATH, logfile, DELETE, logpath):
 		dbclone.GrantAccess( "Anonymous", "6" )
 
 		if DELETE:
-			os.remove(os.path.join(NSFPATH, task[0]))
+			os.remove(os.path.join(task[0], task[1]))
 
 		OriginalDocCount = db.AllDocuments
 		CloneDocCount = dbclone.AllDocuments
 
 		if  CloneDocCount.Count == OriginalDocCount.Count:
 			logfile = open(os.path.join(logpath,"decrypt_log.txt"),"a")
-			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(CloneDocCount.Count)+"\tDecrypted\n")
+			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(OriginalDocCount.Count)+"\t"+str(CloneDocCount.Count)+"\tDecrypted\n")
 			logfile.close()
 
 		elif  CloneDocCount.Count != OriginalDocCount.Count:
 			logfile = open(os.path.join(logpath,"decrypt_log.txt"),"a")
-			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(CloneDocCount.Count)+"\tDecryption Failed\n")
+			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(OriginalDocCount.Count)+"\t"+str(CloneDocCount.Count)+"\tDecryption Failed: Count Mismatch\n")
 			logfile.close()
 
 
 #Useless function as all id/password combinations are set in the load file now.
 def BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH, DELETE, logpath):
+	#TASKS is (root, file, username, IDFile, Password)
 	for BadNSF in bad:
 		for ID in TASKS:
 			for PASSWORD in TASKS:
-				shutil.copyfile(os.path.join(IDPATH,ID[1]),os.path.join(LotusDataPATH,"user.id"))
+				shutil.copyfile(os.path.join(IDPATH,ID[3]),os.path.join(LotusDataPATH,"user.id"))
 				session[count-1] = win32com.client.Dispatch("Lotus.NotesSession[count-1]")
 
 				try:
-					session[count-1].Initialize(PASSWORD[2])
+					session[count-1].Initialize(PASSWORD[4])
 					database = session[count-1].GetDatabase("", os.path.join(NSFPATH, BadNSF[0]))
 					docs = database.AllDocuments
 				except:
-					logfile.write(BadNSF[0]+"\t"+ID[1]+"\t"+PASSWORD[2]+"\tNA\tERROR: BF Attempt Bad\n")
+					logfile.write(BadNSF[0]+"\t"+BadNSF[1]+"\t"+ID[3]+"\t"+PASSWORD[4]+"\tNA\tERROR: BF Attempt Bad\n")
 					os.remove(os.path.join(LotusDataPATH,"user.id"))
 					continue
-				logfile.write(str(BadNSF[0])+"\t"+str(ID[1])+"\t"+str(PASSWORD[2])+"\t"+str(docs.Count)+"\tGOOD\tBRUTEFORCE\n")
+				logfile.write(BadNSF[0]+"\t"+BadNSF[1]+"\t"+ID[3]+"\t"+PASSWORD[4]+"\t"+str(docs.Count)+"\tGOOD\tBRUTEFORCE\n")
 				#NSFDecrypt(database, task, NSFPATH, logfile)
 				os.remove(os.path.join(LotusDataPATH,"user.id"))
 
@@ -94,7 +97,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 	#TODO: Add os check to see if LOADFILE exists. If not throw error and exit.
 	TASKS = [line.strip().split(',') for line in open(LOADFILE)]
 	logfile = open(os.path.join(logpath,"log.txt"),"w")
-	logfile.write("NSF File\tID File\tPASSWORD\tMSG Count\tSTATUS\n")
+	logfile.write("NSF File Path\tNSF File\tID File\tPASSWORD\tMSG Count\tFile Size\tSTATUS\n")
 	logfile.close()
 
 	for line in fileinput.FileInput(inifile, inplace=1):
@@ -152,50 +155,58 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 							#print os.getcwd()
 							#print os.path.join(IDPATH,custodian[1]) +"--"+custodian[1]
 							##shutil.copy2(os.path.join(IDPATH,custodian[1]),".")
+							#Custodian is (username, IDFile, Password)
 							print "Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+""
 							connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+"", autocommit=True)
 							#connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+file+"", autocommit=True)
 							#os.remove(os.path.join(IDPATH,custodian[1]))
 							if connection:
-								GOOD.append((os.path.join(root,file), custodian[1], custodian[2]))
+								#edit
+								GOOD.append((root, file, custodian[0], custodian[1], custodian[2]))
+								#GOOD.append((os.path.join(root,file), custodian[1], custodian[2]))
 								#print GOOD
 						except Exception as inst:
-										print inst.args
-										print os.path.join(root,file)
+										#print inst.args
+										#print os.path.join(root,file)
 										a,b = inst.args
 										if re.search('Wrong Password',b):
 											logfile = open(os.path.join(logpath,"log.txt"),"a")
-											logfile.write(str(os.path.join(root,file))+"\t"+str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t\tbad password/ID Combination\n")
+											logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: bad password/ID Combination\n")
 											logfile.close()
 											#print str(custodian[0])+"\t "+str(custodian[2])+"\t "+str(custodian[1])+"\t\tbad password/ID Combination\n"
 										else:
 											logfile = open(os.path.join(logpath,"log.txt"),"a")
-											logfile.write(str(os.path.join(root,file))+"\t"+str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+b+"\n")
+											logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: "+b+"\n")
 											#str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tWorks\n"
 											logfile.close()
 	for task in GOOD:
+		#task is (root, file, username, IDFile, Password)
 		#print "working on second stage"
 		#print task
 		try:
+			print "first good run: "
+			print task
 			reg = session.createRegistration()
-			reg.switchToID(os.path.join(IDPATH,task[1]),task[2])
+			reg.switchToID(os.path.join(IDPATH,task[3]),task[4])
 
 		except Exception as inst:
-				#print inst
+				print inst
+				#x, y ,u , i = inst.args
 				logfile = open(os.path.join(logpath,"log.txt"),"a")
-				logfile.write(str(os.path.join(root,file))+"\t"+str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+inst.args+"\n")
+				#logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(custodian[4])+"\t"+str(x)+str(y)+str(u)+str(i)+"\n")
 				logfile.close()
 				#if type(inst) == AttributeError:
 					#x, y ,u , i = inst.arg
 					#print inst
 
 		try:
-			database = session.GetDatabase("", os.path.join(root, task[0]))
+			database = session.GetDatabase("", os.path.join(task[0], task[1]))
 			docs = database.AllDocuments
 			#print str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tGOOD\n"
 			logfile = open(os.path.join(logpath,"log.txt"),"a")
-			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tWorks\n")
+			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t"+str(docs.Count)+"\t"+str(os.path.getsize(os.path.join(task[0],task[1])))+"\tWorks\n")
 			logfile.close()
+			#msgCount = str(docs.Count)
 			if decrypt == 1:
 				NSFDecrypt(database, task, NSFPATH, logfile, DELETE, logpath)
 				#print str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tworks\n"
@@ -211,7 +222,8 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 			except Exception as inst:
 					if type(inst) == AttributeError:
 						logfile = open(os.path.join(logpath,"log.txt"),"a")
-						logfile.write(str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+inst.args+"\n")
+						print custodian
+						logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t"+inst.args+"\n")
 						logfile.close()
 						#print inst.args
 
@@ -222,7 +234,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 			x, y ,u , i = inst.args
 			#print inst
 			logfile = open(os.path.join(logpath,"log.txt"),"a")
-			logfile.write(str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+str(x)+str(y)+str(u)+str(i)+"\n")
+			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t\t"+str(x)+str(y)+str(u)+str(i)+"\n")
 			logfile.close()
 			#if type(inst) == TypeError:
 				#x, y ,u , i = inst.args
@@ -255,7 +267,7 @@ def CheckPwdProtected(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteFo
 		session.Initialize()
 	except Exception as inst:
 			logfile = open(os.path.join(logpath,"log.txt"),"a")
-			logfile.write(str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+inst+"\n")
+			logfile.write("PP\t"+str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+inst+"\n")
 			logfile.close()
 			#print type(inst)
 			#print inst.args
@@ -269,7 +281,7 @@ def CheckPwdProtected(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteFo
 				session.Initialize()
 			except Exception as inst:
 					logfile = open(os.path.join(logpath,"log.txt"),"a")
-					logfile.write(str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+inst+"\n")
+					logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\t"+inst+"\n")
 					logfile.close()
 					#print type(inst)
 					#print inst.args
@@ -284,7 +296,7 @@ def CheckPwdProtected(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteFo
 					#print type(inst)
 					#print inst.args
 					logfile = open(os.path.join(logpath,"log.txt"),"a")
-					logfile.write(str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+inst+"\n")
+					logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\t"+str(os.path.getsize(os.path.join(task[0],task[1])))+"\tERROR: "+inst+"\n")
 					logfile.close()
 
 
@@ -338,4 +350,6 @@ def main(argv, GOOD, BAD, DummyFile, inifile):
 		Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile)
 
 if __name__ == "__main__":
+	start_time = time.time()
 	main(sys.argv[1:], GOOD, BAD, DummyFile, inifile)
+	print time.time() - start_time, "seconds"
