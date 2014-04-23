@@ -1,4 +1,4 @@
-'''	NSF Validation Tool v .8.4
+'''	NSF Validation Tool v .8.3
 	This is the first attempt at using python to interact with com
 	and run various Lotus com functions and too validate deliveries.
 
@@ -27,13 +27,13 @@ import time
 NSFPATH = r'Y:\NSF'
 IDPATH = r'Y:\NSF\IDs'
 ##TODO:Should be able to look this path automatically.
-LotusDataPATH = r'C:\Users\user\AppData\Local\IBM\Notes\Data'
-inifile = r'C:\Users\user\AppData\Local\IBM\Notes\Data\notes.ini'
+LotusDataPATH = r'C:\Users\blanksj\AppData\Local\IBM\Notes\Data'
+inifile = r'C:\Users\blanksj\AppData\Local\IBM\Notes\Data\notes.ini'
 logpath = r'C:\temp\test'
 #logpath = r'Y:\NSF'
 ##TODO: Add command line arg to specify this file path.
 LOADFILE = r'Y:\NSF\load.txt'
-DummyFile = r'C:\Users\user\Desktop\test\dummy.id'
+DummyFile = r'C:\Users\blanksj\Desktop\test\dummy.id'
 NotesSQLCFG = r'C:\NotesSQL\notessql.cfg'
 workingDir = r'C:\temp\test'
 #workingDir = r'Y:\NSF'
@@ -134,9 +134,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 				for custodian in TASKS:
 					if custodian[0] == dir:
 						CFGFile = open(NotesSQLCFG,"a")
-						#Test full path
 						CFGFile.write(custodian[0]+"/"+str(count)+"="+os.path.join(IDPATH,custodian[1])+"\n")
-						#CFGFile.write(custodian[0]+"/"+str(count)+"="+custodian[1]+"\n")
 						CFGFile.close()
 						count = count + 1
 	buildfile(TASKS, NotesSQLCFG)
@@ -145,78 +143,62 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 		for custodian in TASKS:
 			count = 0
 
-			#print files
 			for file in files:
 				if custodian[0] in root.split('\\'):
 					if file.endswith('nsf'):
-						#print file
 						try:
 							os.chdir(root)
 							if file in filenameBlacklist:
 								print "skipped: "+file
-								break
+								continue
 
 							with open(file) as file_to_check:
 								# read contents of the file
-								data = file_to_check.read()
+								data = file_to_check.read(256)
 								# pipe contents of the file through
 								md5_returned = hashlib.md5(data).hexdigest()
 								print "md5: "+md5_returned
 
 							if md5_returned in hashBlacklist:
-								break
+								continue
 							else:
 								#Test moving id file to cwd.
-								#print os.getcwd()
-								#print os.path.join(IDPATH,custodian[1]) +"--"+custodian[1]
-								##shutil.copy2(os.path.join(IDPATH,custodian[1]),".")
 								#Custodian is (username, IDFile, Password)
 								print "Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+""
 								connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+os.path.join(root,file)+"", autocommit=True)
-								#connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID="+custodian[0]+"/"+str(count)+";PWD="+custodian[2]+"; DATABASE="+file+"", autocommit=True)
-								#os.remove(os.path.join(IDPATH,custodian[1]))
+
 								if connection:
-									#edit
 									GOOD.append((root, file, custodian[0], custodian[1], custodian[2]))
-									#GOOD.append((os.path.join(root,file), custodian[1], custodian[2]))
-									#print GOOD
+
 						except MemoryError:
-							print "fuck"
-							break
+							print "MemoryError"
+							continue
 						except Exception as inst:
 							print Exception
-							#print len(inst)
 							print inst.args
 
-							#print os.path.join(root,file)
 							a, b = inst
 							if re.search('Wrong Password',b):
 								logfile = open(os.path.join(logpath,"log.txt"),"a")
 								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: bad password/ID Combination\n")
 								logfile.close()
-								#print str(custodian[0])+"\t "+str(custodian[2])+"\t "+str(custodian[1])+"\t\tbad password/ID Combination\n"
 							else:
 								logfile = open(os.path.join(logpath,"log.txt"),"a")
 								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: "+b+"\n")
-								#str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tWorks\n"
 								logfile.close()
 
 	for task in GOOD:
 		#task is (root, file, username, IDFile, Password)
-		#print "working on second stage"
-		#print task
 		try:
-			print "first good run: "
-			print task
 			reg = session.createRegistration()
 			reg.switchToID(os.path.join(IDPATH,task[3]),task[4])
 
 		except Exception as inst:
 				print inst
 				#x, y ,u , i = inst.args
-				logfile = open(os.path.join(logpath,"log.txt"),"a")
+				#logfile = open(os.path.join(logpath,"log.txt"),"a")
 				#logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(custodian[4])+"\t"+str(x)+str(y)+str(u)+str(i)+"\n")
-				logfile.close()
+				#logfile.close()
 				#if type(inst) == AttributeError:
 					#x, y ,u , i = inst.arg
 					#print inst
@@ -224,14 +206,12 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 		try:
 			database = session.GetDatabase("", os.path.join(task[0], task[1]))
 			docs = database.AllDocuments
-			#print str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tGOOD\n"
 			logfile = open(os.path.join(logpath,"log.txt"),"a")
 			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t"+str(docs.Count)+"\t"+str(os.path.getsize(os.path.join(task[0],task[1])))+"\tWorks\n")
 			logfile.close()
-			#msgCount = str(docs.Count)
+
 			if decrypt == 1:
 				NSFDecrypt(database, task, NSFPATH, logfile, DELETE, logpath)
-				#print str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(docs.Count)+"\tworks\n"
 
 			for line in fileinput.FileInput(inifile, inplace=1):
 				if line.startswith("KeyFileName="):
@@ -247,14 +227,10 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 						print custodian
 						logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t"+inst.args+"\n")
 						logfile.close()
-						#print inst.args
-
-
 
 		except Exception as inst:
 			print inst.args
 			x, y ,u , i = inst.args
-			#print inst
 			logfile = open(os.path.join(logpath,"log.txt"),"a")
 			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t\t"+str(x)+str(y)+str(u)+str(i)+"\n")
 			logfile.close()
@@ -315,8 +291,6 @@ def CheckPwdProtected(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteFo
 					connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID=dummy;DATABASE="+os.path.join(root,file)+"", autocommit=True)
 
 				except Exception as inst:
-					#print type(inst)
-					#print inst.args
 					logfile = open(os.path.join(logpath,"log.txt"),"a")
 					logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\t"+str(os.path.getsize(os.path.join(task[0],task[1])))+"\tERROR: "+inst+"\n")
 					logfile.close()
@@ -332,14 +306,12 @@ def main(argv, GOOD, BAD, DummyFile, inifile):
 	hashblacklistIn=[line.strip() for line in open(os.path.join(workingDir, r'hblacklist.txt'))]
 	
 	#load filename blacklist
-
 	for line in fileblacklistIn:
 		filenameBlacklist.append(line)
-
+	#load hash blacklist
 	for line in hashblacklistIn:
 		hashBlacklist.append(line)
 
-	#load hash blacklist
 	for line in fileinput.FileInput(inifile, inplace=1):
 		if line.startswith("KeyFileName="):
 			defaultID = line
@@ -370,7 +342,7 @@ def main(argv, GOOD, BAD, DummyFile, inifile):
 			sys.exit()
 		elif opt == "-d":
 			decrypt = True
-			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile)
+			Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile, filenameBlacklist, hashBlacklist)
 		elif opt == "-p":
 			decrypt = True
 			CheckPwdProtected(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG)
