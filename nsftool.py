@@ -1,4 +1,4 @@
-'''	NSF Validation Tool v .8.3
+'''	NSF Validation Tool v .8.5
 	This is the first attempt at using python to interact with com
 	and run various Lotus com functions and too validate deliveries.
 
@@ -27,16 +27,16 @@ import time
 NSFPATH = r'Y:\NSF'
 IDPATH = r'Y:\NSF\IDs'
 ##TODO:Should be able to look this path automatically.
-LotusDataPATH = r'C:\Users\blanksj\AppData\Local\IBM\Notes\Data'
-inifile = r'C:\Users\blanksj\AppData\Local\IBM\Notes\Data\notes.ini'
-logpath = r'C:\temp\test'
-#logpath = r'Y:\NSF'
+LotusDataPATH = r'C:\Users\user\AppData\Local\IBM\Notes\Data'
+inifile = r'C:\Users\user\AppData\Local\IBM\Notes\Data\notes.ini'
+#logpath = r'C:\temp\test'
+logpath = r'Y:\NSF'
 ##TODO: Add command line arg to specify this file path.
 LOADFILE = r'Y:\NSF\load.txt'
-DummyFile = r'C:\Users\blanksj\Desktop\test\dummy.id'
+DummyFile = r'C:\Users\user\Desktop\test\dummy.id'
 NotesSQLCFG = r'C:\NotesSQL\notessql.cfg'
-workingDir = r'C:\temp\test'
-#workingDir = r'Y:\NSF'
+#workingDir = r'C:\temp\test'
+workingDir = r'Y:\NSF'
 BAD = []
 GOOD = []
 
@@ -149,7 +149,9 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 						try:
 							os.chdir(root)
 							if file in filenameBlacklist:
-								print "skipped: "+file
+								logfile = open(os.path.join(logpath,"log.txt"),"a")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tBlacklisted\n")
+								logfile.close()
 								continue
 
 							with open(file) as file_to_check:
@@ -160,6 +162,9 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 								print "md5: "+md5_returned
 
 							if md5_returned in hashBlacklist:
+								logfile = open(os.path.join(logpath,"log.txt"),"a")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tBlacklisted\n")
+								logfile.close()
 								continue
 							else:
 								#Test moving id file to cwd.
@@ -181,6 +186,14 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 							if re.search('Wrong Password',b):
 								logfile = open(os.path.join(logpath,"log.txt"),"a")
 								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: bad password/ID Combination\n")
+								logfile.close()
+							elif re.search('08001',b):
+								logfile = open(os.path.join(logpath,"log.txt"),"a")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: unencrypted or could require additional certs\n")
+								logfile.close()
+							elif re.search('S1000',b):
+								logfile = open(os.path.join(logpath,"log.txt"),"a")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: possible corrupt file, please check\n")
 								logfile.close()
 							else:
 								logfile = open(os.path.join(logpath,"log.txt"),"a")
