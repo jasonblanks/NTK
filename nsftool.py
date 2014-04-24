@@ -27,16 +27,16 @@ import time
 NSFPATH = r'Y:\NSF'
 IDPATH = r'Y:\NSF\IDs'
 ##TODO:Should be able to look this path automatically.
-LotusDataPATH = r'C:\Users\user\AppData\Local\IBM\Notes\Data'
-inifile = r'C:\Users\user\AppData\Local\IBM\Notes\Data\notes.ini'
-#logpath = r'C:\temp\test'
-logpath = r'Y:\NSF'
+LotusDataPATH = r'C:\Users\blanksj\AppData\Local\IBM\Notes\Data'
+inifile = r'C:\Users\blanksj\AppData\Local\IBM\Notes\Data\notes.ini'
+logpath = r'C:\temp\test'
+#logpath = r'Y:\NSF'
 ##TODO: Add command line arg to specify this file path.
 LOADFILE = r'Y:\NSF\load.txt'
-DummyFile = r'C:\Users\user\Desktop\test\dummy.id'
+DummyFile = r'C:\Users\blanksj\Desktop\test\dummy.id'
 NotesSQLCFG = r'C:\NotesSQL\notessql.cfg'
-#workingDir = r'C:\temp\test'
-workingDir = r'Y:\NSF'
+workingDir = r'C:\temp\test'
+#workingDir = r'Y:\NSF'
 BAD = []
 GOOD = []
 
@@ -61,13 +61,13 @@ def NSFDecrypt(db, task, NSFPATH, logfile, DELETE, logpath):
 		CloneDocCount = dbclone.AllDocuments
 
 		if  CloneDocCount.Count == OriginalDocCount.Count:
-			logfile = open(os.path.join(logpath,"decrypt_log.txt"),"a")
-			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(OriginalDocCount.Count)+"\t"+str(CloneDocCount.Count)+"\tDecrypted\n")
+			logfile = open(os.path.join(logpath,"log.txt"),"a")
+			logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[2])+"\tN\\A\t"+str(OriginalDocCount.Count)+"\t"+str(CloneDocCount.Count)+"\t"+str(os.path.getsize(os.path.join(task[0], cloneFilename[0])+"--decrypt.nsf"))+"\tDecrypted\n")
 			logfile.close()
 
 		elif  CloneDocCount.Count != OriginalDocCount.Count:
-			logfile = open(os.path.join(logpath,"decrypt_log.txt"),"a")
-			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[2])+"\t"+str(OriginalDocCount.Count)+"\t"+str(CloneDocCount.Count)+"\tDecryption Failed: Count Mismatch\n")
+			logfile = open(os.path.join(logpath,"log.txt"),"a")
+			logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[2])+"\tN\\A\t"+str(OriginalDocCount.Count)+"\t"+str(CloneDocCount.Count)+"\tDecryption Failed: Count Mismatch\n")
 			logfile.close()
 
 
@@ -97,7 +97,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 	#TODO: Add os check to see if LOADFILE exists. If not throw error and exit.
 	TASKS = [line.strip().split(',') for line in open(LOADFILE)]
 	logfile = open(os.path.join(logpath,"log.txt"),"w")
-	logfile.write("NSF File Path\tNSF File\tID File\tPASSWORD\tMSG Count\tFile Size\tSTATUS\n")
+	logfile.write("NSF File Path\tNSF File\tID File\tPASSWORD\tOriginal Count\tDecrypted Count\tFile Size\tSTATUS\n")
 	logfile.close()
 
 	for line in fileinput.FileInput(inifile, inplace=1):
@@ -150,7 +150,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 							os.chdir(root)
 							if file in filenameBlacklist:
 								logfile = open(os.path.join(logpath,"log.txt"),"a")
-								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tBlacklisted\n")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tBlacklisted\n")
 								logfile.close()
 								continue
 
@@ -163,7 +163,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 
 							if md5_returned in hashBlacklist:
 								logfile = open(os.path.join(logpath,"log.txt"),"a")
-								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tBlacklisted\n")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tBlacklisted\n")
 								logfile.close()
 								continue
 							else:
@@ -185,19 +185,20 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 							a, b = inst
 							if re.search('Wrong Password',b):
 								logfile = open(os.path.join(logpath,"log.txt"),"a")
-								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: bad password/ID Combination\n")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: bad password/ID Combination\n")
 								logfile.close()
 							elif re.search('08001',b):
 								logfile = open(os.path.join(logpath,"log.txt"),"a")
-								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: unencrypted or could require additional certs\n")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: unencrypted or could require additional certs\n")
 								logfile.close()
+								GOOD.append((root, file, custodian[0], custodian[1], custodian[2]))
 							elif re.search('S1000',b):
 								logfile = open(os.path.join(logpath,"log.txt"),"a")
-								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: possible corrupt file, please check\n")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: possible corrupt file, please check\n")
 								logfile.close()
 							else:
 								logfile = open(os.path.join(logpath,"log.txt"),"a")
-								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: "+b+"\n")
+								logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: "+b+"\n")
 								logfile.close()
 
 	for task in GOOD:
@@ -210,7 +211,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 				print inst
 				#x, y ,u , i = inst.args
 				#logfile = open(os.path.join(logpath,"log.txt"),"a")
-				#logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(custodian[4])+"\t"+str(x)+str(y)+str(u)+str(i)+"\n")
+				#logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(custodian[4])+"\t"+str(x)+str(y)+str(u)+str(i)+"\n")
 				#logfile.close()
 				#if type(inst) == AttributeError:
 					#x, y ,u , i = inst.arg
@@ -220,7 +221,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 			database = session.GetDatabase("", os.path.join(task[0], task[1]))
 			docs = database.AllDocuments
 			logfile = open(os.path.join(logpath,"log.txt"),"a")
-			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t"+str(docs.Count)+"\t"+str(os.path.getsize(os.path.join(task[0],task[1])))+"\tWorks\n")
+			logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t"+str(docs.Count)+"\t\N\\A\t"+str(os.path.getsize(os.path.join(task[0],task[1])))+"\tVerified\n")
 			logfile.close()
 
 			if decrypt == 1:
@@ -238,15 +239,16 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 					if type(inst) == AttributeError:
 						logfile = open(os.path.join(logpath,"log.txt"),"a")
 						print custodian
-						logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t"+inst.args+"\n")
+						logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t"+inst.args+"\n")
 						logfile.close()
 
 		except Exception as inst:
-			print inst.args
-			x, y ,u , i = inst.args
-			logfile = open(os.path.join(logpath,"log.txt"),"a")
-			logfile.write(str(task[0])+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t\t"+str(x)+str(y)+str(u)+str(i)+"\n")
-			logfile.close()
+			print inst
+			#come back
+			#x, y ,u , i = inst.args
+			#logfile = open(os.path.join(logpath,"log.txt"),"a")
+			#logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\t\t"+str(x)+str(y)+str(u)+str(i)+"\n")
+			#logfile.close()
 			#if type(inst) == TypeError:
 				#x, y ,u , i = inst.args
 				#print inst.args
@@ -307,7 +309,13 @@ def CheckPwdProtected(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteFo
 					logfile = open(os.path.join(logpath,"log.txt"),"a")
 					logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\t"+str(os.path.getsize(os.path.join(task[0],task[1])))+"\tERROR: "+inst+"\n")
 					logfile.close()
-
+def cli_progress_test(end_val, bar_length=20):
+	for i in xrange(0, end_val):
+		percent = float(i) / end_val
+		hashes = '#' * int(round(percent * bar_length))
+		spaces = ' ' * (bar_length - len(hashes))
+		sys.stdout.write("\rPercent: [{0}] {1}%".format(hashes + spaces, int(round(percent * 100))))
+		sys.stdout.flush()
 
 def main(argv, GOOD, BAD, DummyFile, inifile):
 	decrypt = 0
