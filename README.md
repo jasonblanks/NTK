@@ -89,8 +89,8 @@ adf32923e2c67d4798b8bf33f0312c41
   
   For now most options are hard coded in the main() function these variables are:
   
-  workingDir = ''       #This is the location of your root processing directory
-  LotusDataPATH = ''    #default: C:\Users\blanksj\AppData\Local\IBM\Notes\Data'
+	workingDir = ''       #This is the location of your root processing directory
+	LotusDataPATH = ''    #default: C:\Users\blanksj\AppData\Local\IBM\Notes\Data'
 	IDPATH = ''           #default: ~workingDir\IDs
 	inifile = ''          #default: ~LotusDataPATH\notes.ini
 	logpath = ''          #default: ~workingDir\
