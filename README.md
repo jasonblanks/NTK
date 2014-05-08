@@ -41,9 +41,8 @@ What I've called the 'working directory' should at a minimum hold one 'custodian
 	  |-fblacklist.txt
 	  |-blacklist.txt
 
-##
-##Load File Breakdown
-##
+####Load File Breakdown
+
 
 The load file is in the format of:
 
@@ -52,7 +51,6 @@ The load file is in the format of:
 basicly this this breaks down and say for every file in said folder run and or test the following ID/Password combinations.  This allows you to attempt or use multiple id files and or test ID/Password combinations, one per line, coma seperated.
 
 #typical loadfile.txt format
-#start
 	GomezAddams,gaddams.id,sd72dns8
 	GomezAddams,gaddams_backup.id,calk72hx
 	WednesdayAddams,waddams.id,password1
@@ -64,7 +62,7 @@ basicly this this breaks down and say for every file in said folder run and or t
 ## fblacklist.txt
 fblacklist.txt is a filename blacklist file you may propigate.  It takes one file name per line.
 
-#typical fblacklist.txt format
+typical_fblacklist.txt_format
 	help.nsf
 	log.nsf
 	logs.nsf
@@ -74,14 +72,14 @@ fblacklist.txt is a filename blacklist file you may propigate.  It takes one fil
 ## hblacklist.txt
 hblacklist.txt is a MD5 Hash listing blacklist file you may propigate.  It takes one MD5 Hash per line.
 
-#typical hblacklist.txt format
+typical_hblacklist.txt_format
 	adf32923e2c67d4798b8bf33f0312c41
 	380a35234d5ca93f71eee06207cf7001
 	3ac41a1dc73242048af3b8567d809af7
 	...
-##  
-## Configuration options
-##
+
+#### Configuration options
+
   
   For now most options are hard coded in the main() function these variables are:
   
