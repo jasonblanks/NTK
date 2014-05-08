@@ -30,7 +30,7 @@ This script assumes that you have a large delivery involving multiple custodians
 
 What I've called the 'working directory' should at a minimum hold one 'custodian' directory and one 'IDs' Directory, though this will usually consist of multiple custodian directorys.
 
-#typical working directory format
+**typical working directory format
 	root
 	  |-IDs\
 	  |-GomezAddams\
@@ -50,7 +50,7 @@ The load file is in the format of:
 
 basicly this this breaks down and say for every file in said folder run and or test the following ID/Password combinations.  This allows you to attempt or use multiple id files and or test ID/Password combinations, one per line, coma seperated.
 
-#typical loadfile.txt format
+**typical loadfile.txt format
 	GomezAddams,gaddams.id,sd72dns8
 	GomezAddams,gaddams_backup.id,calk72hx
 	WednesdayAddams,waddams.id,password1
@@ -62,7 +62,7 @@ basicly this this breaks down and say for every file in said folder run and or t
 ## fblacklist.txt
 fblacklist.txt is a filename blacklist file you may propigate.  It takes one file name per line.
 
-typical_fblacklist.txt_format
+**typical fblacklist.txt format
 	help.nsf
 	log.nsf
 	logs.nsf
@@ -72,7 +72,7 @@ typical_fblacklist.txt_format
 ## hblacklist.txt
 hblacklist.txt is a MD5 Hash listing blacklist file you may propigate.  It takes one MD5 Hash per line.
 
-typical_hblacklist.txt_format
+**typical hblacklist.txt format
 	adf32923e2c67d4798b8bf33f0312c41
 	380a35234d5ca93f71eee06207cf7001
 	3ac41a1dc73242048af3b8567d809af7
