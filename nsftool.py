@@ -31,15 +31,12 @@
 '''
 import sys, os, win32com.client, fileinput, pyodbc, re, hashlib, shutil, argparse, time
 from _winreg import *
+#from os import _Environ
 
 BAD = []
 GOOD = []
 REMOVE = []
 MD5HashList = []
-DummyFile = r'C:\Users\user\Desktop\test\dummy.id'
-inifile = r'C:\Users\user\AppData\Local\IBM\Notes\Data\notes.ini'
-#workingDir = r'Y:\NSF'
-workingDir = r'C:\temp\test'
 
 #not implemented yet...
 def prerequisites():
@@ -101,13 +98,13 @@ def prerequisites():
 
 
 
-def NSFDecrypt(db, task, NSFPATH, logfile, DELETE, logpath):
+def NSFDecrypt(db, task, logfile, DELETE, logpath):
 		#TASKS is (root, file, username, IDFile, Password)
 		cloneFilename = task[1].split('.')
 		dbclone = db.CreateFromTemplate("", os.path.join(task[0], cloneFilename[0])+"--decrypt.nsf", False)
 
 
-		
+
 		# We determianed you not only have to remove encryption by compact but clear out the ACL on that NSF
 		# Below is a quick hack to allow everyone access, I would like to make this cleaner my creating a function
 		# to clear out the whole ACL.
@@ -130,7 +127,7 @@ def NSFDecrypt(db, task, NSFPATH, logfile, DELETE, logpath):
 				line = line.replace(line, "")
 			if line.startswith("Directory="):
 				defaultOwner = line
-				line = line.replace(line, "Directory="+NSFPATH)
+				line = line.replace(line, "Directory=")
 			print line.strip()
 		try:
 			session = win32com.client.Dispatch("Lotus.NotesSession")
@@ -144,15 +141,13 @@ def NSFDecrypt(db, task, NSFPATH, logfile, DELETE, logpath):
 		try:
 			OriginalDocCount = db.AllDocuments
 			CloneDocCount = dbclone.AllDocuments
-			if  CloneDocCount.Count == OriginalDocCount.Count:
-				logfile = open(os.path.join(logpath,"log.txt"),"a")
-				logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[2])+"\tN\\A\t"+str(OriginalDocCount.Count)+"\t"+str(CloneDocCount.Count)+"\t"+str(os.path.getsize(os.path.join(task[0], cloneFilename[0])+"--decrypt.nsf"))+"\tDecrypted\n")
-				logfile.close()
+			logfile = open(os.path.join(logpath,"log.txt"),"a")
 
-			elif  CloneDocCount.Count != OriginalDocCount.Count:
-				logfile = open(os.path.join(logpath,"log.txt"),"a")
+			if  CloneDocCount.Count == OriginalDocCount.Count:
+				logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[2])+"\tN\\A\t"+str(OriginalDocCount.Count)+"\t"+str(CloneDocCount.Count)+"\t"+str(os.path.getsize(os.path.join(task[0], cloneFilename[0])+"--decrypt.nsf"))+"\tDecrypted\n")
+
+			else: # CloneDocCount.Count != OriginalDocCount.Count
 				logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[2])+"\tN\\A\t"+str(OriginalDocCount.Count)+"\t"+str(CloneDocCount.Count)+"\tDecryption Failed: Count Mismatch\n")
-				logfile.close()
 
 		except Exception as inst:
 			print Exception
@@ -160,37 +155,17 @@ def NSFDecrypt(db, task, NSFPATH, logfile, DELETE, logpath):
 
 			a, b = inst
 			if re.search('encrypted',b):
-				logfile = open(os.path.join(logpath,"log.txt"),"a")
 				logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: Unsupported Encryption\n")
-				logfile.close()
 				REMOVE.append(os.path.join(task[0], cloneFilename[0])+"--decrypt.nsf")
 
+		finally:
+			logfile.close()
 
 
-#Useless function as all id/password combinations are set in the load file now.
-def BruteForce(bad, TASKS, logfile, IDPATH, LotusDataPATH, NSFPATH, DELETE, logpath):
-	#TASKS is (root, file, username, IDFile, Password)
-	for BadNSF in bad:
-		for ID in TASKS:
-			for PASSWORD in TASKS:
-				shutil.copyfile(os.path.join(IDPATH,ID[3]),os.path.join(LotusDataPATH,"user.id"))
-				session[count-1] = win32com.client.Dispatch("Lotus.NotesSession[count-1]")
+def Validate(IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile, filenameBlacklist, hashBlacklist, DedupeOption):
+	if not os.path.exists(LOADFILE):
+		sys.exit("Error: path does not exist: {0}".format(LOADFILE))
 
-				try:
-					session[count-1].Initialize(PASSWORD[4])
-					database = session[count-1].GetDatabase("", os.path.join(NSFPATH, BadNSF[0]))
-					docs = database.AllDocuments
-				except:
-					logfile.write(BadNSF[0]+"\t"+BadNSF[1]+"\t"+ID[3]+"\t"+PASSWORD[4]+"\tNA\tERROR: BF Attempt Bad\n")
-					os.remove(os.path.join(LotusDataPATH,"user.id"))
-					continue
-				logfile.write(BadNSF[0]+"\t"+BadNSF[1]+"\t"+ID[3]+"\t"+PASSWORD[4]+"\t"+str(docs.Count)+"\tGOOD\tBRUTEFORCE\n")
-				#NSFDecrypt(database, task, NSFPATH, logfile)
-				os.remove(os.path.join(LotusDataPATH,"user.id"))
-
-
-def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile, filenameBlacklist, hashBlacklist, DedupeOption):
-	#TODO: Add os check to see if LOADFILE exists. If not throw error and exit.
 	TASKS = [line.strip().split(',') for line in open(LOADFILE)]
 	logfile = open(os.path.join(logpath,"log.txt"),"w")
 	logfile.write("NSF File Path\tNSF File\tID File\tPASSWORD\tOriginal Count\tDecrypted Count\tFile Size (Bytes)\tStatus\tHeader Text\n")
@@ -208,7 +183,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 			line = line.replace(line, "")
 		if line.startswith("Directory="):
 			defaultOwner = line
-			line = line.replace(line, "Directory="+NSFPATH)
+			line = line.replace(line, "Directory=")
 		print line.strip()
 
 	try:
@@ -245,6 +220,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 					if file.endswith('nsf'):
 						try:
 							os.chdir(root)
+							logfile = open(os.path.join(logpath,"log.txt"),"a")
 							#Unsupported file test
 							f = open(file, "rb")
 							i = 0
@@ -252,9 +228,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 							for line in f:
 								if re.search('#2Notes90V1.3', line):
 									print "unsupported file encrption: "+str(os.path.join(root, file))
-									logfile = open(os.path.join(logpath,"log.txt"),"a")
 									logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR:  unsupported encryption\\file type\n")
-									logfile.close()
 									unsupported = 1
 								i = i + 1
 								if i == 3:
@@ -264,9 +238,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 							#end of unsupported file test
 
 							if file in filenameBlacklist:
-								logfile = open(os.path.join(logpath,"log.txt"),"a")
 								logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tBlacklisted\n")
-								logfile.close()
 								continue
 							try:
 								file_to_check = open(file, 'rb')
@@ -280,9 +252,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 								#MD5 dedupe check
 								if DedupeOption:
 									if md5_returned in MD5HashList:
-										logfile = open(os.path.join(logpath,"log.txt"),"a")
 										logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tMD5 Deduped: "+str(md5_returned)+"\n")
-										logfile.close()
 										continue
 									else:
 										MD5HashList.append(md5_returned)
@@ -291,9 +261,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 								print "unable to create md5 for: "+str(file)
 
 							if md5_returned in hashBlacklist:
-								logfile = open(os.path.join(logpath,"log.txt"),"a")
 								logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tBlacklisted\n")
-								logfile.close()
 								continue
 							else:
 								#Custodian is (username, IDFile, Password)
@@ -311,26 +279,20 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 							#print inst
 							a, b = inst
 							if re.search('Wrong Password',b):
-								logfile = open(os.path.join(logpath,"log.txt"),"a")
 								logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: bad password/ID Combination\n")
-								logfile.close()
 							elif re.search('08001',b):
-								logfile = open(os.path.join(logpath,"log.txt"),"a")
-								logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: unencrypted or could require additional certs\n")
-								logfile.close()
+								#To cut down on logging since this is a  possible unencrypted file we will no longer log this, will create furster tests.
+								#logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: unencrypted or could require additional certs\n")
 								GOOD.append((root, file, custodian[0], custodian[1], custodian[2]))
 							elif re.search('S1000',b):
-								logfile = open(os.path.join(logpath,"log.txt"),"a")
 								logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: possible corrupt file, please check\n")
-								logfile.close()
 							elif re.search('SECKFMDefaultPromptHandler',b):
-								logfile = open(os.path.join(logpath,"log.txt"),"a")
 								logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: Unsupported encryption\n")
-								logfile.close()
 							else:
-								logfile = open(os.path.join(logpath,"log.txt"),"a")
 								logfile.write(os.path.join(str(root),str(file))+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\tN\\A\tN\\A\t"+str(os.path.getsize(os.path.join(root,file)))+"\tERROR: "+b+"\n")
-								logfile.close()
+						finally:
+							logfile.close()
+
 	NSFCount = len(GOOD)
 	completedCount = NSFCount
 	for task in GOOD:
@@ -346,10 +308,6 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 
 		except Exception as inst:
 				print inst
-				#x, y ,u , i = inst.args
-				#logfile = open(os.path.join(logpath,"log.txt"),"a")
-				#logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(custodian[4])+"\tNot Decrypted line 214\n")
-				#logfile.close()
 				for line in fileinput.FileInput(inifile, inplace=1):
 					if line.startswith("KeyFilename="):
 						defaultID = line
@@ -362,7 +320,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 						line = line.replace(line, "")
 					if line.startswith("Directory="):
 						defaultOwner = line
-						line = line.replace(line, "Directory="+NSFPATH)
+						line = line.replace(line, "Directory=")
 					print line.strip()
 				try:
 					session = win32com.client.Dispatch("Lotus.NotesSession")
@@ -386,8 +344,7 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 				logfile.close()
 
 			if decrypt == 1:
-				NSFDecrypt(database, task, NSFPATH, logfile, DELETE, logpath)
-
+				NSFDecrypt(database, task, logfile, DELETE, logpath)
 
 
 		except Exception as inst:
@@ -396,60 +353,6 @@ def Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELE
 			logfile.write(str(os.path.join(task[0], task[1]))+"\t"+str(task[1])+"\t"+str(task[3])+"\t"+str(task[4])+"\tUnknown Error\n")
 			logfile.close()
 
-#todo Finsh pass through function to identify none-secured NSF files
-def CheckPwdProtected(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile):
-	for line in fileinput.FileInput(inifile, inplace=1):
-		if line.startswith("KeyFilename="):
-			defaultID = line
-			line = line.replace(line, "KeyFilename="+DummyFile)
-		if line.startswith("KeyFileName_Owner"):
-			defaultOwner = line
-			line = line.replace(line, r'')
-		if line.startswith("Location="):
-			defaultOwner = line
-			line = line.replace(line, "")
-		if line.startswith("Directory="):
-			defaultOwner = line
-			line = line.replace(line, "Directory="+NSFPATH)
-		print line.strip()
-
-	try:
-		session = win32com.client.Dispatch("Lotus.NotesSession")
-		session.Initialize()
-	except Exception as inst:
-			logfile = open(os.path.join(logpath,"log.txt"),"a")
-			logfile.write("PP\t"+str(custodian[0])+"\t"+str(custodian[2])+"\t"+str(custodian[1])+"\t"+inst+"\n")
-			logfile.close()
-
-	for root, dirs, files in os.walk(workingDir, topdown=False):
-		for file in files:
-			try:
-				session = win32com.client.Dispatch("Lotus.NotesSession")
-				session.Initialize()
-			except Exception as inst:
-					logfile = open(os.path.join(logpath,"log.txt"),"a")
-					logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\t"+inst+"\n")
-					logfile.close()
-
-			if file.endswith('nsf'):
-				try:
-					os.chdir(root)
-					connection=pyodbc.connect("Driver={Lotus Notes SQL Driver (*.nsf)};UID=dummy;DATABASE="+os.path.join(root,file)+"", autocommit=True)
-
-				except Exception as inst:
-					logfile = open(os.path.join(logpath,"log.txt"),"a")
-					logfile.write(str(root)+"\t"+str(file)+"\t"+str(custodian[1])+"\t"+str(custodian[2])+"\t"+str(os.path.getsize(os.path.join(task[0],task[1])))+"\tERROR: "+inst+"\n")
-					logfile.close()
-
-#TODO: The below function is work in progress in creating active status display while decrypting etc.
-def cli_progress_test(end_val, bar_length=20):
-	for i in xrange(0, end_val):
-		percent = float(i) / end_val
-		hashes = '#' * int(round(percent * bar_length))
-		spaces = ' ' * (bar_length - len(hashes))
-		sys.stdout.write("\rPercent: [{0}] {1}%".format(hashes + spaces, int(round(percent * 100))))
-		sys.stdout.flush()
-
 def main(GOOD):
 
 	decrypt = None
@@ -457,25 +360,103 @@ def main(GOOD):
 	DELETE = None
 	DedupeOption = None
 	hashBlacklist = []
-	NSFPATH = r'Y:\NSF'
-	IDPATH = r'Y:\NSF\IDs'
-	##TODO:Should be able to look this path automatically.
-	LotusDataPATH = r'C:\Users\user\AppData\Local\IBM\Notes\Data'
-	inifile = r'C:\Users\user\AppData\Local\IBM\Notes\Data\notes.ini'
-	logpath = r'C:\temp\test'
+
+	LOADFILE = None
+	workingDir = None
+	logpath = None
+	LotusDataPATH = None
+	NotesSQLCFG = None
+	inifile = None
+	IDPATH = None
+	LOADFILE = None
+	DummyFile = None
+
+	parser = argparse.ArgumentParser()
+	group = parser.add_mutually_exclusive_group()
+	group.add_argument("-v", "--validate", help="This method provide a quick NSF counts and ID file checks without decrypting.",action="store_true")
+	group.add_argument("-d", "--decrypt", help="this option both validates NSF File counts, ID/PASSWORD pares aswell as decrypts",action="store_true")
+
+
+	#parser.add_argument("-h", "--help",help="This help")
+	parser.add_argument("-id",help="full path to the id repository directory")
+	parser.add_argument("-md5",help="this option tracks all md5's and ignores files that have already been added matching the same md5 value.",action="store_true")
+	parser.add_argument("-l", "--loadfile",help="define which dummy file to used.")
+	parser.add_argument("-wd", "--workingdir",help="defines the root/start directory to use, full path must be used")
+	parser.add_argument("-lp", "--lotuspath",help="defines the Notes user data directory.")
+	parser.add_argument("-ini", "--inifile",help="defines lotus client ini file.")
+	parser.add_argument("-sql", "--notessql",help="defines NotesSQL cfg file.")
+	parser.add_argument("-log", "--logpath",help="defines the log directory.")
+	parser.add_argument("-r", "--remove",help="remove original NSF files after decryption.")
+	parser.add_argument("-f", "--dummyfile",help="allows you to define which dummy file to use.")
+
+
+
+	#TODO:  add new arg group "output" with output options (clone, clone directory struct), (inplace, output decrypted files in the same directory
+	#TODO:	    as the original), (delete, delete, deletes original files when completed
+	#LotusDataPATH = r'LotusDataPATH = r'C:\Users\user\AppData\Local\IBM\Notes\Data'
 	#logpath = r'Y:\NSF'
+
+
+
+
+
+
+
+
+
+	args = parser.parse_args()
+
+	if args.remove:
+		DELETE = True
+	if args.dummyfile:
+		DummyFile = args.dummyfile
+	if args.id:
+		IDPATH = args.id
+	if args.loadfile:
+		LOADFILE = args.loadfile
+	if args.decrypt:
+		decrypt = True
+	if args.md5:
+		DedupeOption = True
+	if args.lotuspath:
+		LotusDataPATH = args.lotuspath
+	if args.inifile:
+		inifile = args.inifile
+	if args.notessql:
+		NotesSQLCFG = args.notessql
+	if args.workingdir:
+		workingDir = args.workingdir
+	if args.logpath:
+		logpath = args.logpath
+
+	if not workingDir:
+		workingDir = os.getcwd()
+		#workingDir = r'C:\temp\test'
+	if not logpath:
+		logpath = workingDir
+	if not LotusDataPATH:
+		LotusDataPATH = os.environ['UserProfile']+r'\AppData\Local\IBM\Notes\Data'
+		#LotusDataPATH = r'%UserProfile%\AppData\Local\IBM\Notes\Data'
+	if not NotesSQLCFG:
+		NotesSQLCFG = r'C:\NotesSQL\notessql.cfg'
+	if not inifile:
+		inifile = os.path.join(LotusDataPATH, "notes.ini")
+	if not IDPATH:
+		IDPATH = os.path.join(workingDir, "IDs")
+
 	##TODO: Add command line arg to specify this file path.
 	#
-	LOADFILE = r'Y:\NSF\load.txt'
-	#LOADFILE = r'Y:\NSF\load.txt'
-	DummyFile = r'C:\Users\user\Desktop\test\dummy.id'
-	NotesSQLCFG = r'C:\NotesSQL\notessql.cfg'
-	#workingDir = r'Y:\NSF'
-	workingDir = r'C:\temp\test'
+	if not LOADFILE:
+		LOADFILE = os.path.join(workingDir, "load.txt")
+	if not DummyFile:
+		DummyFile= os.path.join(IDPATH, "dummy.id")
+
+	#if args.config:
+	#	pass
+
 	filenameBlacklist = []
 	fileblacklistIn=[line.strip() for line in open(os.path.join(workingDir, r'fblacklist.txt'))]
 	hashblacklistIn=[line.strip() for line in open(os.path.join(workingDir, r'hblacklist.txt'))]
-	
 	#load filename blacklist
 	for line in fileblacklistIn:
 		filenameBlacklist.append(line)
@@ -496,48 +477,10 @@ def main(GOOD):
 			line = line.replace(line, "")
 		if line.startswith("Directory="):
 			defaultOwner = line
-			line = line.replace(line, "Directory="+NSFPATH)
+			line = line.replace(line, "Directory=")
 		print line.strip()
 
-
-	parser = argparse.ArgumentParser()
-	group = parser.add_mutually_exclusive_group()
-	group.add_argument("-v", "--validate", help="This method provide a quick NSF counts and ID file checks without decrypting.",action="store_true")
-	group.add_argument("-d", "--decrypt", help="this option both validates NSF File counts, ID/PASSWORD pares aswell as decrypts",action="store_true")
-
-
-	#parser.add_argument("-h", "--help",help="This help")
-	parser.add_argument("-id",help="full path to the id repository directory  (ex: -id C:\\ID_FILES)")
-	parser.add_argument("-md5",help="this option tracks all md5's and ignores files that have already been added matching the same md5 value.",action="store_true")
-	parser.add_argument("-l", "--loadfile",help="define which dummy file to use, full path muct be used. (ex: -l C:\\loadfile.txt)")
-	parser.add_argument("-r", "--remove",help="remove original NSF files after decryption")
-	parser.add_argument("-f", "--dummyfile",help="allows you to define which dummy file to use, full path muct be used. (ex: -f C:\\dummyfile.id)")
-
-
-
-	#TODO:  add new arg group "output" with output options (clone, clone directory struct), (inplace, output decrypted files in the same directory
-	#TODO:	    as the original), (delete, delete, deletes original files when completed
-
-
-	args = parser.parse_args()
-
-	if args.remove:
-		DELETE = True
-	elif args.dummyfile:
-		DummyFile = args.dummyfile
-	elif args.id:
-		IDPATH = args.id
-	elif args.loadfile:
-		LOADFILE = args.loadfile
-	elif args.decrypt:
-		decrypt = True
-	elif args.md5:
-		DedupeOption = True
-	#elif args.config:
-	#	pass
-
-
-	Validate(NSFPATH, IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile, filenameBlacklist, hashBlacklist, DedupeOption)
+	Validate(IDPATH, LotusDataPATH, LOADFILE, decrypt, bruteForce, DELETE, inifile, GOOD, BAD, NotesSQLCFG, logpath, workingDir, DummyFile, filenameBlacklist, hashBlacklist, DedupeOption)
 
 if __name__ == "__main__":
 	start_time = time.time()
@@ -545,7 +488,6 @@ if __name__ == "__main__":
 	print time.time() - start_time, "seconds"
 
 	print "cleaning up...."
-	removefile = open(workingDir+"remove.bat", 'w')
-	for r in REMOVE:
-		removefile.write("REMOVE "+r+"\n")
-	removefile.close()
+
+
+
